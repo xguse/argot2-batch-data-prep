@@ -57,7 +57,7 @@ $ conda create -n ENV_NAME --file requirements.txt
 3. Run the pipeline via the `snakemake` command.
 
     ```shell
-    $ snakemake --configfile path/to/your/configfile.yaml all
+    $ snakemake --configfile path/to/your/configfile.yaml  -s main.snake all
     ```
 
 
