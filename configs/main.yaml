@@ -1,16 +1,22 @@
 COMMON:
-    RUN_NAME: name_me
-    OUT_DIR_LOCATION: "/path/to/where/you/want/out_dir/to/be/put"
+    RUN_NAME: gmm_tx_by_cufflinks
+    OUT_DIR_LOCATION: "/home/gus/MEGAsync/zim/main/Yale/Collaborations/Hongyu-tsetse/gmm_tx_prep_for_argot2_pipeline/output"
 
 
 # --------------------------------------
-RULE_PYSCRIPT:
-    SETTING1: ''
-    IN_FILE1: ''
-    IN_FILE2: ''
+SPLIT_INPUT_FASTA:
+    SEQS_PER_FASTA: 2500
+    FASTA_PATH: "/home/gus/MEGAsync/zim/main/Yale/Collaborations/Hongyu-tsetse/gmm_to_gff_pipeline/pipeline_prep/2016-02-05_comprehensive_Gmm_transcript_set/Gisella2016_Morsitan_transcriptome/transcripts.fa"
+    FASTA_HEADER_DELIM: " gene="
 
 # --------------------------------------
-RULE_RSCRIPT:
-    SETTINGA: ''
-    IN_FILEA: ''
-    IN_FILEB: ''
+TRANSLATE_FASTAS:
+    WORKERS: None
+
+# --------------------------------------
+RUN_BLAST:
+    BLAST_DB: "/run/media/gus/Storage/louise/data/indexes/blast/uniprot_sprot.fasta"
+
+# --------------------------------------
+RUN_HMMER:
+    HMMER_DB: "/run/media/gus/Storage/louise/data/indexes/hmmer/Pfam-AB.hmm"

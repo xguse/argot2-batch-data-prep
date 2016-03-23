@@ -14,3 +14,8 @@ numexpr
 numpy
 xlrd
 xlwt
+blast
+hmmer
+pyfaidx
+biopython
+docopt

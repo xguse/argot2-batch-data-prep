@@ -42,80 +42,168 @@ rule save_run_config:
             cnf_out.write(ORIGINAL_CONFIG_AS_STRING)
 
 
-# ------------------------- #
-#### RULE_PYSCRIPT ####
-RULE_PYSCRIPT = config["RULE_PYSCRIPT"]
-
-# params
-SETTING1 = RULE_PYSCRIPT["SETTING1"]
-
-# inputs
-IN_FILE1 = RULE_PYSCRIPT["IN_FILE1"]
-IN_FILE2 = RULE_PYSCRIPT["IN_FILE2"]
-
-# outputs
-RULE_PYSCRIPT_OUT = OUT_DIR+"/RULE_PYSCRIPT"
-
-OUT_FILE1 = RULE_PYSCRIPT_OUT+'/out_file1.csv'
-OUT_FILE2 = RULE_PYSCRIPT_OUT+'/out_file2.txt'
-
-
-# ---
-rule rule_pyscript:
-    params:
-        setting1=SETTING1,
-
-    input:
-        in_file1=IN_FILE1,
-        in_file2=IN_FILE2
-    output:
-        out_file1=OUT_FILE1,
-        out_file2=OUT_FILE2,
-
-    script:
-        "python/scripts/rule_pyscript.py"
 
 
 # ------------------------- #
-#### RULE_RSCRIPT ####
-RULE_RSCRIPT = config["RULE_RSCRIPT"]
+#### SPLIT_INPUT_FASTA ####
+SPLIT_INPUT_FASTA = config["SPLIT_INPUT_FASTA"]
+
+SEQS_PER_FASTA = SPLIT_INPUT_FASTA["SEQS_PER_FASTA"]
+TOTAL_RECS = get_total_record_count(fasta_file=SPLIT_INPUT_FASTA["FASTA_PATH"])
+NUM_GROUPS_FASTA = get_number_of_groups(total=TOTAL_RECS,
+                                        group_size=SEQS_PER_FASTA)
+
+# print("SEQS_PER_FASTA={SEQS_PER_FASTA},TOTAL_RECS={TOTAL_RECS},NUM_GROUPS_FASTA={NUM_GROUPS_FASTA}".format(SEQS_PER_FASTA=SEQS_PER_FASTA,TOTAL_RECS=TOTAL_RECS,NUM_GROUPS_FASTA=NUM_GROUPS_FASTA))
 
 # params
-SETTINGA = RULE_RSCRIPT["SETTINGA"]
+FASTA_HEADER_DELIM = SPLIT_INPUT_FASTA["FASTA_HEADER_DELIM"]
 
 # inputs
-IN_FILEA = RULE_RSCRIPT["IN_FILEA"]
-IN_FILEB = RULE_RSCRIPT["IN_FILEB"]
+FASTA_PATH = SPLIT_INPUT_FASTA["FASTA_PATH"]
 
 # outputs
-RULE_RSCRIPT_OUT = OUT_DIR+"/rule_rscript"
-
-OUT_FILEA = RULE_RSCRIPT_OUT+'/out_filea.csv'
-OUT_FILEB = RULE_RSCRIPT_OUT+'/out_fileb.txt'
+SPLIT_INPUT_FASTA_OUT = OUT_DIR+"/split_input_fasta"
+SPLIT_FASTAS = [SPLIT_INPUT_FASTA_OUT+'/fasta_group_{group_num}.fas'.format(group_num=group_num) for group_num in range(NUM_GROUPS_FASTA)]
 
 
 # ---
-rule rule_rscript:
+rule split_input_fasta:
     params:
-        settinga=SETTINGA,
-
+        fasta_header_delim=FASTA_HEADER_DELIM,
     input:
-        in_filea=IN_FILEA,
-        in_fileb=IN_FILEB
+        fasta_path=FASTA_PATH,
     output:
-        out_filea=OUT_FILEA,
-        out_fileb=OUT_FILEB,
+        split_fastas=SPLIT_FASTAS,
 
     script:
-        "r/scripts/rule_rscript.R"
+        "python/scripts/split_input_fasta.py"
 
+
+# ------------------------- #
+#### TRANSLATE_FASTAS ####
+TRANSLATE_FASTAS = config["TRANSLATE_FASTAS"]
+
+# params
+WORKERS = TRANSLATE_FASTAS["WORKERS"]
+
+# inputs
+
+# outputs
+TRANSLATE_FASTAS_OUT = OUT_DIR+"/translate_fastas"
+TRANSLATED_FASTAS = [TRANSLATE_FASTAS_OUT+'/fasta_group_{group_num}.6frames.fas'.format(group_num=group_num) for group_num in range(NUM_GROUPS_FASTA)]
+
+TRANSLATE_FASTAS_SCRIPT = "python/scripts/translate_fastas.py"
+
+# ---
+rule translate_fastas:
+    params:
+        workers=WORKERS,
+
+    input:
+        split_fastas=SPLIT_INPUT_FASTA_OUT+"/fasta_group_{group_num}.fas"
+
+    output:
+        translated_fastas=TRANSLATE_FASTAS_OUT+"/fasta_group_{group_num}.6frames.fas",
+
+    shell:
+        """python {TRANSLATE_FASTAS_SCRIPT} {input.split_fastas} {output.translated_fastas}
+        """
+    # run:
+    #     from python.scripts.translate_fastas import do_translation
+    #     from multiprocessing import Pool
+    #
+    #     with Pool(params.workers) as pool:
+    #         pool.starmap(do_translation, zip(input.split_fastas, output.translated_fastas))
+
+
+
+
+
+
+# ------------------------- #
+#### RUN_BLAST ####
+RUN_BLAST = config["RUN_BLAST"]
+
+# params
+BLAST_DB = RUN_BLAST["BLAST_DB"]
+
+# inputs
+
+# outputs
+RUN_BLAST_OUT = OUT_DIR+"/RUN_BLAST"
+SPLIT_BLAST_RESULTS = ["{out_dir}/{base_name}.blastx".format(out_dir=RUN_BLAST_OUT,
+                                                                   base_name=os.path.basename(fasta))
+                       for fasta in rules.split_input_fasta.output.split_fastas]
+
+# ---
+rule run_blast:
+    params:
+        blast_db=BLAST_DB,
+    input:
+        split_fastas=SPLIT_INPUT_FASTA_OUT+"/fasta_group_{group_num}.fas",
+    output:
+        split_blast_results=RUN_BLAST_OUT+"/fasta_group_{group_num}.fas.blastx",
+
+    shell:
+        """blastx -outfmt "6 qseqid sseqid evalue " \
+        -query {input.split_fastas} \
+        -db {params.blast_db} \
+        -out {output.split_blast_results}
+        """
+
+# ------------------------- #
+#### RUN_HMMER ####
+RUN_HMMER = config["RUN_HMMER"]
+
+# params
+HMMER_DB = RUN_HMMER["HMMER_DB"]
+
+# inputs
+
+# outputs
+RUN_HMMER_OUT = OUT_DIR+"/run_hmmer"
+SPLIT_HMMER_RESULTS = ["{out_dir}/{base_name}.hmmer".format(out_dir=RUN_HMMER_OUT,
+                                                            base_name=os.path.basename(fasta))
+                       for fasta in TRANSLATED_FASTAS]
+
+# ---
+rule run_hmmer:
+    params:
+        hmmer_db=HMMER_DB,
+    input:
+        split_translated_fastas=TRANSLATE_FASTAS_OUT+"/fasta_group_{group_num}.6frames.fas",
+    output:
+        split_hmmer_results=RUN_HMMER_OUT+"/fasta_group_{group_num}.6frames.fas.hmmer",
+
+    shell:
+        """hmmscan --tblout {output.split_hmmer_results} {params.hmmer_db} {input.split_translated_fastas}
+        """
 
 
 #### ALL ####
-input_all = [rules.save_run_config.output,
-             rules.rule_pyscript.output,
-             rules.rule_rscript.output,
+# input_all = [rules.save_run_config.output,
+#              rules.split_input_fasta.output,
+#              rules.rule_rscript.output,
+#              ]
+
+input_all = [SAVE_RUN_CONFIG_OUT,
+             SPLIT_FASTAS,
+             TRANSLATED_FASTAS,
+             SPLIT_BLAST_RESULTS,
+             SPLIT_HMMER_RESULTS,
+
              ]
+
+# input_all = [rules.save_run_config.output,
+#              rules.split_input_fasta.output,
+#              TRANSLATED_FASTAS,
+#              rules.run_blast.output,
+#              rules.run_hmmer.output,
+#
+#              ]
+
+
+
 # ---
 rule all:
     input:
