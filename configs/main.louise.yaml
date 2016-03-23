@@ -1,0 +1,23 @@
+COMMON:
+    RUN_NAME: gmm_tx_by_cufflinks
+    OUT_DIR_LOCATION: "/fastscratch/wd238/pipelines/argot2prep/"
+    SHELL_PREFIX: "source activate argot2prep;"
+
+
+# --------------------------------------
+SPLIT_INPUT_FASTA:
+    SEQS_PER_FASTA: 2500
+    FASTA_PATH: "/home/gus/remote_mounts/louise/data/projects/xiaoqing/blat_Gmm_on_Gff/Gisella2016_Morsitan_transcriptome/transcripts.fa"
+    FASTA_HEADER_DELIM: " gene="
+
+# --------------------------------------
+TRANSLATE_FASTAS:
+    WORKERS: None
+
+# --------------------------------------
+RUN_BLAST:
+    BLAST_DB: "/home2/wd238/data/indexes/blast/uniprot_sprot.fasta"
+
+# --------------------------------------
+RUN_HMMER:
+    HMMER_DB: "/home2/wd238/data/external_multispecies_databases/PFAM/Pfam-AB.hmm"

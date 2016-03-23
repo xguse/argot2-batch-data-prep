@@ -23,7 +23,12 @@ ORIGINAL_CONFIG_AS_STRING = yaml.dump(config, default_flow_style=False)
 RUN_NAME = config["COMMON"]["RUN_NAME"]
 OUT_DIR = "{base_dir}/{run_name}".format(base_dir=config["COMMON"]["OUT_DIR_LOCATION"], run_name=RUN_NAME)
 
+try:
+    SHELL_PREFIX = config["COMMON"]["SHELL_PREFIX"]
+except KeyError:
+    SHELL_PREFIX = ""
 
+shell.prefix(SHELL_PREFIX)
 
 
 ############ BEGIN PIPELINE RULES ############
